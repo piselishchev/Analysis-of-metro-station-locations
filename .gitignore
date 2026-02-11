@@ -1,0 +1,3 @@
+*.pyc
+cache/
+website/__pycache__
