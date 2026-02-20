@@ -1,3 +1,2 @@
-*.pyc
 cache/
-website/__pycache__
+__pycache__/

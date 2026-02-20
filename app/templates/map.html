@@ -1,0 +1,57 @@
+{% extends "base.html" %} {% block title %}Карта станций{% endblock %}
+{% block content %}
+
+<style>
+  body {
+    background-color: lightgray;
+  }
+</style>
+
+<body>
+  <br>
+  <h1 align="center">Это основная страница проекта</h1>
+  <br>
+  <p>Тут будут ввод и вывод.</p>
+  <br>
+  <form action = "/submit" method="post">
+    <div class="two-columns">
+      <div class="column">
+        <p>Выберите район:</p>
+        <div class="mb-3">
+          <label for="SelectRegion" class="form-label"></label>
+          <select class="form‑select my‑custom‑select" id="SelectRegion" aria-label="Выбор региона">
+            <option selected>Район</option>
+            <option value="1">Автозаводский район</option>
+            <option value="2">Канавинский район</option>
+            <option value="3">Ленинский район</option>
+            <option value="4">Московский район</option>
+            <option value="5">Нижегородский район</option>
+            <option value="6">Приокский район</option>
+            <option value="7">Советский район</option>
+            <option value="8">Сормовский район</option>
+          </select>
+        </div>
+      </div>
+      <div class="column">
+        <p>Укажите количество станций:</p>
+        <div class="mb-3">
+          <label for="SelectAmount" class="form-label"></label>
+          <select class="form‑select my‑custom‑select" id="SelectAmount" aria-label="Выбор количества станций">
+            <option selected>1</option>
+            <option value="1">2</option>
+            <option value="2">3</option>
+            <option value="3">4</option>
+            <option value="4">5</option>
+            <option value="5">6</option>
+            <option value="6">7</option>
+            <option value="7">8</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <br>
+    <button class="btn btn-primary">Отправить</button>
+  </form>
+</body>
+
+{% endblock %}
