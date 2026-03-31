@@ -1,57 +1,326 @@
-{% extends "base.html" %} {% block title %}Карта станций{% endblock %}
+{% extends "base.html" %}
+
+{% block title %}Карта станций{% endblock %}
+
 {% block content %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v9.2.4/ol.css">
+<script src="https://cdn.jsdelivr.net/npm/ol@v9.2.4/dist/ol.js"></script>
 
 <style>
   body {
     background-color: lightgray;
   }
+
+  .criteria-container {
+    background: rgba(255, 255, 255, 0.9);
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    color: #333;
+  }
+
+  .my-custom-select {
+    width: 100%;
+    padding: 8px;
+    border-radius: 5px;
+  }
+
+  #loader {
+    display: none;
+    margin-top: 15px;
+    font-weight: bold;
+    color: #007bff;
+  }
+
+  #map {
+    width: 100%;
+    height: 500px;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .ol-popup {
+    position: absolute;
+    background-color: white;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    padding: 15px;
+    border-radius: 10px;
+    border: 1px solid #cccccc;
+    min-width: 250px;
+  }
+
+  .ol-popup-closer {
+    text-decoration: none;
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    color: #666;
+    font-weight: bold;
+  }
+
+  .ol-popup-closer:after {
+    content: "✖";
+  }
 </style>
 
-<body>
-  <br>
-  <h1 align="center">Это основная страница проекта</h1>
-  <br>
-  <p>Тут будут ввод и вывод.</p>
-  <br>
-  <form action = "/submit" method="post">
-    <div class="two-columns">
-      <div class="column">
-        <p>Выберите район:</p>
-        <div class="mb-3">
-          <label for="SelectRegion" class="form-label"></label>
-          <select class="form‑select my‑custom‑select" id="SelectRegion" aria-label="Выбор региона">
-            <option selected>Район</option>
-            <option value="1">Автозаводский район</option>
-            <option value="2">Канавинский район</option>
-            <option value="3">Ленинский район</option>
-            <option value="4">Московский район</option>
-            <option value="5">Нижегородский район</option>
-            <option value="6">Приокский район</option>
-            <option value="7">Советский район</option>
-            <option value="8">Сормовский район</option>
-          </select>
+<div class="container mt-5">
+  <h1 class="text-center text-white mb-4">Анализ локаций метрополитена</h1>
+
+  <form id="analysisForm">
+    <div class="row justify-content-center">
+
+      <div class="col-md-5 mb-4">
+        <div class="criteria-container">
+          <h5><i class="fa fa-sliders"></i> Критерии отбора:</h5>
+          <hr>
+
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" value="population" id="checkPop" checked>
+            <label class="form-check-label" for="checkPop">Плотность населения</label>
+          </div>
+
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" value="metro" id="checkMetro" checked>
+            <label class="form-check-label" for="checkMetro">Удаленность от существующих станций</label>
+          </div>
+
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" value="airport" id="checkAir">
+            <label class="form-check-label" for="checkAir">Близость к аэропорту</label>
+          </div>
+
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" value="train" id="checkTrain">
+            <label class="form-check-label" for="checkTrain">Близость к Ж/Д вокзалам</label>
+          </div>
+
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" value="center" id="checkCenter">
+            <label class="form-check-label" for="checkCenter">Близость к центру города</label>
+          </div>
         </div>
       </div>
-      <div class="column">
-        <p>Укажите количество станций:</p>
-        <div class="mb-3">
-          <label for="SelectAmount" class="form-label"></label>
-          <select class="form‑select my‑custom‑select" id="SelectAmount" aria-label="Выбор количества станций">
-            <option selected>1</option>
-            <option value="1">2</option>
-            <option value="2">3</option>
-            <option value="3">4</option>
-            <option value="4">5</option>
-            <option value="5">6</option>
-            <option value="6">7</option>
-            <option value="7">8</option>
-          </select>
+
+      <div class="col-md-5 mb-4">
+        <div class="criteria-container">
+          <h5><i class="fa fa-map-marker"></i> Параметры поиска:</h5>
+          <hr>
+
+          <div class="mb-3">
+            <label for="SelectAmount" class="form-label">Количество планируемых станций:</label>
+            <select class="form-control my-custom-select" id="SelectAmount">
+              <option value="1">1 станция</option>
+              <option value="2">2 станции</option>
+              <option value="3" selected>3 станции</option>
+              <option value="5">5 станций</option>
+              <option value="8">8 станций</option>
+            </select>
+          </div>
+
+          <button type="button" onclick="runAnalysis()" class="btn btn-primary btn-block btn-lg">
+            Запустить алгоритм
+          </button>
+
+          <div id="loader" class="text-center">
+            <i class="fa fa-spinner fa-spin"></i> Обработка...
+          </div>
         </div>
+      </div>
+
+    </div>
+  </form>
+
+  <div id="results-area" class="mt-4" style="display:none;">
+    <div class="criteria-container">
+      <h4>Результаты анализа:</h4>
+      <div id="points-list"></div>
+    </div>
+  </div>
+
+  <div id="map-area" class="mt-4" style="display:none;">
+    <div class="criteria-container">
+      <h4>Карта точек</h4>
+      <div id="map"></div>
+
+      <div id="popup" class="ol-popup" style="display:none;">
+        <a href="#" id="popup-closer" class="ol-popup-closer"></a>
+        <div id="popup-content"></div>
       </div>
     </div>
-    <br>
-    <button class="btn btn-primary">Отправить</button>
-  </form>
-</body>
+  </div>
+</div>
+
+<script>
+  let map = null;
+  let vectorSource = null;
+  let vectorLayer = null;
+  let popupOverlay = null;
+
+  function initMap() {
+    if (map) return;
+
+    vectorSource = new ol.source.Vector();
+
+    vectorLayer = new ol.layer.Vector({
+      source: vectorSource,
+      style: function(feature) {
+        return new ol.style.Style({
+          image: new ol.style.Circle({
+            radius: 7,
+            fill: new ol.style.Fill({ color: '#007bff' }),
+            stroke: new ol.style.Stroke({ color: '#ffffff', width: 2 })
+          })
+        });
+      }
+    });
+
+    popupOverlay = new ol.Overlay({
+      element: document.getElementById('popup'),
+      autoPan: {
+        animation: {
+          duration: 250
+        }
+      }
+    });
+
+    map = new ol.Map({
+      target: 'map',
+      layers: [
+        new ol.layer.Tile({
+          source: new ol.source.OSM()
+        }),
+        vectorLayer
+      ],
+      overlays: [popupOverlay],
+      view: new ol.View({
+        center: ol.proj.fromLonLat([44.0059, 56.3269]),
+        zoom: 11
+      })
+    });
+
+    map.on('singleclick', function(evt) {
+      const feature = map.forEachFeatureAtPixel(evt.pixel, function(feature) {
+        return feature;
+      });
+
+      const popup = document.getElementById('popup');
+      const popupContent = document.getElementById('popup-content');
+
+      if (feature) {
+        const props = feature.getProperties();
+
+        popupContent.innerHTML = `
+          <h6 style="margin-bottom: 8px;">${props.name || 'Локация'}</h6>
+          <div><b>Балл:</b> ${props.score ?? '—'}</div>
+          <div><b>Координаты:</b> ${props.lat}, ${props.lon}</div>
+        `;
+
+        popup.style.display = 'block';
+        popupOverlay.setPosition(evt.coordinate);
+      } else {
+        popup.style.display = 'none';
+        popupOverlay.setPosition(undefined);
+      }
+    });
+
+    document.getElementById('popup-closer').onclick = function() {
+      document.getElementById('popup').style.display = 'none';
+      popupOverlay.setPosition(undefined);
+      return false;
+    };
+  }
+
+  function addPointsToMap(points) {
+    vectorSource.clear();
+
+    const features = points.map(point => {
+      return new ol.Feature({
+        geometry: new ol.geom.Point(
+          ol.proj.fromLonLat([point.lon, point.lat])
+        ),
+        name: point.name,
+        description: point.description,
+        score: point.score,
+        lat: point.lat,
+        lon: point.lon
+      });
+    });
+
+    vectorSource.addFeatures(features);
+
+    if (features.length > 0) {
+      const extent = vectorSource.getExtent();
+      map.getView().fit(extent, {
+        padding: [40, 40, 40, 40],
+        maxZoom: 14,
+        duration: 500
+      });
+    }
+
+    setTimeout(() => map.updateSize(), 200);
+  }
+
+  function runAnalysis() {
+    const loader = document.getElementById('loader');
+    const resultsArea = document.getElementById('results-area');
+    const pointsList = document.getElementById('points-list');
+    const mapArea = document.getElementById('map-area');
+
+    loader.style.display = 'block';
+    resultsArea.style.display = 'none';
+    mapArea.style.display = 'none';
+    pointsList.innerHTML = '';
+
+    const selectedCriteria = Array.from(
+      document.querySelectorAll('.form-check-input:checked')
+    ).map(cb => cb.value);
+
+    const amount = document.getElementById('SelectAmount').value;
+
+    fetch('/submit', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        n_stations: amount,
+        criteria: selectedCriteria
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      loader.style.display = 'none';
+      resultsArea.style.display = 'block';
+
+      if (data.results && data.results.length > 0) {
+        data.results.forEach((point, index) => {
+          const item = document.createElement('div');
+          item.className = 'alert alert-info';
+          item.innerHTML = `
+            <strong>${point.name ?? 'Без названия'}</strong><br>
+            Координаты: ${Number(point.lat).toFixed(6)}, ${Number(point.lon).toFixed(6)}<br>
+            Оценка: ${point.score ?? '—'}<br>
+            Удалённость от центра: ${point.center ?? '—'}<br>
+            Удалённость от аэропорта: ${point.airport ?? '—'}<br>
+            Ближайшая станция метро: ${point.metro ?? '—'}<br>
+            Ближайшая станция Ж/Д: ${point.train ?? '—'}
+          `;
+          pointsList.appendChild(item);
+        });
+
+        mapArea.style.display = 'block';
+        initMap();
+        addPointsToMap(data.results);
+      } else {
+        pointsList.innerHTML = '<p>Точки не найдены. Попробуйте изменить критерии.</p>';
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      loader.style.display = 'none';
+      alert('Произошла ошибка при расчете. Проверьте консоль бэкенда.');
+    });
+  }
+</script>
 
 {% endblock %}

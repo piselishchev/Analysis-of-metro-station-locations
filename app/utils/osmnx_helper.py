@@ -27,11 +27,12 @@ def load_graph(city, network_type="drive"):
 
 def road_distance(graph, coord1, coord2):
     """
-    graph: ox.graph_from_place(city_name, network_type='drive')
+    graph = ox.truncate.largest_component(G, strongly=True)
+    G: ox.graph_from_place(city_name, network_type='drive')
     coord1, coord2: (lat, lon)
     returns: shortest road distance in meters
     """
-    
+
     orig_node = ox.distance.nearest_nodes(graph, X=coord1[1], Y=coord1[0])
     dest_node = ox.distance.nearest_nodes(graph, X=coord2[1], Y=coord2[0])
     
@@ -44,3 +45,13 @@ def road_distance(graph, coord1, coord2):
     )
 
     return distance
+
+def build_distance_map_to_target(graph, target_coord):
+    target_node = ox.distance.nearest_nodes(graph, X=target_coord[1], Y=target_coord[0])
+
+    distances = nx.single_source_dijkstra_path_length(
+        graph,
+        target_node,
+        weight="length"
+    )
+    return distances

@@ -1,17 +1,82 @@
-{% extends "base.html" %} {% block title %}Home{% endblock %}
+{% extends "base.html" %}
+
+{% block title %}Home{% endblock %}
+
 {% block content %}
 
 <style>
-  body {
-    background-color: lightgray;
-  }
+
+.container {
+    background: transparent !important;
+    padding: 0;
+}
+
+/* центральный блок */
+.hero {
+    height: 90vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+/* текст */
+.hero-content {
+    color: white;
+}
+
+/* заголовок */
+.hero h1 {
+    font-size: 48px;
+    font-weight: 600;
+}
+
+/* текст */
+.hero p {
+    font-size: 20px;
+    margin-top: 15px;
+}
+
+/* кнопки */
+.hero-buttons {
+    margin-top: 30px;
+    display: flex;
+    justify-content: center;
+}
+
+.hero-buttons .btn {
+    padding: 12px 30px;
+    font-size: 16px;
+    margin: 10px;
+    border-radius: 6px;
+}
+
 </style>
 
-<body>
-  <br>
-  <h1 align="center">Это домашняя страница</h1>
-  <br>
-  <p>Тут будут краткое описание и ссылки на различные вкладки.</p>
-</body>
+<div class="hero">
+
+  <div class="hero-content">
+
+    <h1>Метро будущего</h1>
+
+    <p>
+        Узнайте как будет развиваться метро в вашем городе.
+    </p>
+
+    <div class="hero-buttons">
+
+        <a href="/map/Nizhny-Novgorod" class="btn btn-primary">
+            ПЕРЕЙТИ
+        </a>
+
+        <a href="/info" class="btn btn-secondary">
+            ПОДРОБНЕЕ
+        </a>
+
+    </div>
+
+  </div>
+
+</div>
 
 {% endblock %}
