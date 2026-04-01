@@ -121,7 +121,7 @@ class Cell:
         point_utm = transform(type(self)._project_to_utm, point_wgs)
 
         # Строим квадрат вокруг центра (половина стороны = 500 м)
-        half = self.SIZE / 2
+        half = self._size / 2
         cell_poly = box(
             point_utm.x - half,
             point_utm.y - half,

@@ -3,10 +3,9 @@ from flask import Blueprint, render_template, request, jsonify
 from app.services.grid_maker import create_grid
 from app.utils.cities import CITIES
 from flask import current_app
+from app.utils import osmnx_helper
 
 citymap = Blueprint('citymap', __name__)
-
-_grid = None
 
 @citymap.route('/submit', methods=['POST'])
 def submit_analysis():
@@ -20,9 +19,10 @@ def submit_analysis():
     
     if not hasattr(current_app, 'grid'):
         current_app.grid = create_grid(CITIES.N_NOVGOROD)
-
     _grid = current_app.grid
     print("Grid acquired!")
+    
+    G = osmnx_helper.load_graph(CITIES.N_NOVGOROD)
     
     results = {"results": []}
     print("Going to macro...")
@@ -31,7 +31,7 @@ def submit_analysis():
     idx = 1
     for macro_cell, score in best_macro_cells:
         print(f"Going to micro ({idx})...")
-        coords = micro.find_coords(macro_cell)
+        coords = micro.find_coords(macro_cell, G)
         print("Done!")
         info = {
             "name": f"Локация №{idx}",
