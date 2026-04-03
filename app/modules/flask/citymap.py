@@ -40,7 +40,7 @@ def submit_analysis():
         coords = micro.find_coords(macro_cell, G)
         print("Done!")
         info = {
-            "name": f"Локация №{idx}",
+            "name": f"Предлагаемая станция №{idx}",
             "lat": coords[0],
             "lon": coords[1],
             "score": score,

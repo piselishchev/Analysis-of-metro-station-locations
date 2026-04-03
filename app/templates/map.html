@@ -311,8 +311,8 @@
         } else {
           popupContent.innerHTML = `
             <h6>${props.name || 'Предлагаемая локация'}</h6>
-            <div><b>Балл:</b> ${props.score?.toFixed(4) ?? '—'}</div>
-            <div><b>Координаты:</b> ${props.lat?.toFixed(6) ?? '—'}, ${props.lon?.toFixed(6) ?? '—'}</div>
+            <div>Балл: ${props.score?.toFixed(2) ?? '—'}</div>
+            <div>Координаты: ${props.lat?.toFixed(6) ?? '—'}, ${props.lon?.toFixed(6) ?? '—'}</div>
           `;
         }
         popup.style.display = 'block';
