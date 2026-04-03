@@ -68,35 +68,29 @@
 
   <form id="analysisForm">
     <div class="row justify-content-center">
-
       <div class="col-md-5 mb-4">
         <div class="criteria-container">
           <h5><i class="fa fa-sliders"></i> Критерии отбора:</h5>
           <hr>
-
           <div class="form-check mb-2">
             <input class="form-check-input" type="checkbox" value="population" id="checkPop" checked>
             <label class="form-check-label" for="checkPop">Плотность населения</label>
           </div>
-
           <div class="form-check mb-2">
             <input class="form-check-input" type="checkbox" value="metro" id="checkMetro" checked>
             <label class="form-check-label" for="checkMetro">Удаленность от существующих станций</label>
           </div>
-
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" value="center" id="checkCenter" checked>
+            <label class="form-check-label" for="checkCenter">Близость к центру города</label>
+          </div>
           <div class="form-check mb-2">
             <input class="form-check-input" type="checkbox" value="airport" id="checkAir">
             <label class="form-check-label" for="checkAir">Близость к аэропорту</label>
           </div>
-
           <div class="form-check mb-2">
             <input class="form-check-input" type="checkbox" value="train" id="checkTrain">
             <label class="form-check-label" for="checkTrain">Близость к Ж/Д вокзалам</label>
-          </div>
-
-          <div class="form-check mb-2">
-            <input class="form-check-input" type="checkbox" value="center" id="checkCenter">
-            <label class="form-check-label" for="checkCenter">Близость к центру города</label>
           </div>
         </div>
       </div>
@@ -105,7 +99,6 @@
         <div class="criteria-container">
           <h5><i class="fa fa-map-marker"></i> Параметры поиска:</h5>
           <hr>
-
           <div class="mb-3">
             <label for="SelectAmount" class="form-label">Количество планируемых станций:</label>
             <select class="form-control my-custom-select" id="SelectAmount">
@@ -114,34 +107,28 @@
               <option value="3" selected>3 станции</option>
               <option value="5">5 станций</option>
               <option value="8">8 станций</option>
+              <option value="10">10 станций</option>
+              <option value="15">15 станций</option>
+              <option value="20">20 станций</option>
+              <option value="25">25 станций</option>
+              <option value="30">30 станций</option>
             </select>
           </div>
-
           <button type="button" onclick="runAnalysis()" class="btn btn-primary btn-block btn-lg">
             Запустить алгоритм
           </button>
-
           <div id="loader" class="text-center">
             <i class="fa fa-spinner fa-spin"></i> Обработка...
           </div>
         </div>
       </div>
-
     </div>
   </form>
-
-  <div id="results-area" class="mt-4" style="display:none;">
-    <div class="criteria-container">
-      <h4>Результаты анализа:</h4>
-      <div id="points-list"></div>
-    </div>
-  </div>
 
   <div id="map-area" class="mt-4" style="display:none;">
     <div class="criteria-container">
       <h4>Карта точек</h4>
       <div id="map"></div>
-
       <div id="popup" class="ol-popup" style="display:none;">
         <a href="#" id="popup-closer" class="ol-popup-closer"></a>
         <div id="popup-content"></div>
@@ -150,46 +137,127 @@
   </div>
 </div>
 
+<div id="results-area" class="mt-4" style="display:none;">
+    <div class="criteria-container">
+      <h4>Результаты анализа:</h4>
+      <div id="points-list"></div>
+    </div>
+  </div>
+<!-- Скрытые элементы для передачи данных о существующих станциях -->
+<div id="metro-stations-data" data-stations='{{ existing_metro_stations | tojson | safe }}' style="display:none;"></div>
+<div id="train-stations-data" data-stations='{{ existing_train_stations | tojson | safe }}' style="display:none;"></div>
+
 <script>
+  // Получение данных о существующих станциях метро
+  const metroDataElement = document.getElementById('metro-stations-data');
+  let existingMetroStations = [];
+  if (metroDataElement && metroDataElement.dataset.stations) {
+    try {
+      existingMetroStations = JSON.parse(metroDataElement.dataset.stations);
+    } catch (e) {
+      console.error('Ошибка парсинга станций метро:', e);
+    }
+  }
+
+  // Получение данных о Ж/Д вокзалах
+  const trainDataElement = document.getElementById('train-stations-data');
+  let existingTrainStations = [];
+  if (trainDataElement && trainDataElement.dataset.stations) {
+    try {
+      existingTrainStations = JSON.parse(trainDataElement.dataset.stations);
+    } catch (e) {
+      console.error('Ошибка парсинга Ж/Д вокзалов:', e);
+    }
+  }
+
   let map = null;
-  let vectorSource = null;
-  let vectorLayer = null;
+  let metroSource = null;
+  let trainSource = null;
+  let resultsSource = null;
   let popupOverlay = null;
+
+  // Стиль для существующих станций метро (красный круг с буквой М)
+  const metroStationStyle = new ol.style.Style({
+    image: new ol.style.Circle({
+      radius: 11,
+      fill: new ol.style.Fill({ color: '#e31b23' }),
+      stroke: new ol.style.Stroke({ color: '#ffffff', width: 2 })
+    }),
+    text: new ol.style.Text({
+      text: 'М',
+      font: 'bold 18px "Arial", sans-serif',
+      fill: new ol.style.Fill({ color: '#ffffff' }),
+      stroke: new ol.style.Stroke({ color: '#000000', width: 1 }),
+      offsetY: 1
+    })
+  });
+
+  // Стиль для Ж/Д вокзалов (зелёный круг с буквой Ж)
+  const trainStationStyle = new ol.style.Style({
+    image: new ol.style.Circle({
+      radius: 11,
+      fill: new ol.style.Fill({ color: '#28a745' }),
+      stroke: new ol.style.Stroke({ color: '#ffffff', width: 2 })
+    }),
+    text: new ol.style.Text({
+      text: 'Ж',
+      font: 'bold 16px "Arial", sans-serif',
+      fill: new ol.style.Fill({ color: '#ffffff' }),
+      stroke: new ol.style.Stroke({ color: '#000000', width: 1 }),
+      offsetY: 1
+    })
+  });
+
+  // Стиль для предлагаемых точек (синий кружок с буквой П)
+  const proposedStationStyle = new ol.style.Style({
+    image: new ol.style.Circle({
+      radius: 12,
+      fill: new ol.style.Fill({ color: '#007bff' }),
+      stroke: new ol.style.Stroke({ color: '#ffffff', width: 2 })
+    }),
+    text: new ol.style.Text({
+      text: 'Н',
+      font: 'bold 16px "Arial", sans-serif',
+      fill: new ol.style.Fill({ color: '#ffffff' }),
+      stroke: new ol.style.Stroke({ color: '#000000', width: 1 }),
+      offsetY: 1
+    })
+  });
 
   function initMap() {
     if (map) return;
 
-    vectorSource = new ol.source.Vector();
+    metroSource = new ol.source.Vector();
+    trainSource = new ol.source.Vector();
+    resultsSource = new ol.source.Vector();
 
-    vectorLayer = new ol.layer.Vector({
-      source: vectorSource,
-      style: function(feature) {
-        return new ol.style.Style({
-          image: new ol.style.Circle({
-            radius: 7,
-            fill: new ol.style.Fill({ color: '#007bff' }),
-            stroke: new ol.style.Stroke({ color: '#ffffff', width: 2 })
-          })
-        });
-      }
+    const metroLayer = new ol.layer.Vector({
+      source: metroSource,
+      style: metroStationStyle
+    });
+
+    const trainLayer = new ol.layer.Vector({
+      source: trainSource,
+      style: trainStationStyle
+    });
+
+    const resultsLayer = new ol.layer.Vector({
+      source: resultsSource,
+      style: proposedStationStyle
     });
 
     popupOverlay = new ol.Overlay({
       element: document.getElementById('popup'),
-      autoPan: {
-        animation: {
-          duration: 250
-        }
-      }
+      autoPan: { animation: { duration: 250 } }
     });
 
     map = new ol.Map({
       target: 'map',
       layers: [
-        new ol.layer.Tile({
-          source: new ol.source.OSM()
-        }),
-        vectorLayer
+        new ol.layer.Tile({ source: new ol.source.OSM() }),
+        metroLayer,
+        trainLayer,
+        resultsLayer
       ],
       overlays: [popupOverlay],
       view: new ol.View({
@@ -198,9 +266,36 @@
       })
     });
 
+    // Добавляем станции метро
+    if (existingMetroStations && Array.isArray(existingMetroStations)) {
+      const features = existingMetroStations.map(station => {
+        return new ol.Feature({
+          geometry: new ol.geom.Point(ol.proj.fromLonLat([station.lon, station.lat])),
+          name: 'Станция метро',
+          type: 'metro'
+        });
+      });
+      metroSource.addFeatures(features);
+    }
+
+    // Добавляем Ж/Д вокзалы
+    if (existingTrainStations && Array.isArray(existingTrainStations)) {
+      const features = existingTrainStations.map(station => {
+        return new ol.Feature({
+          geometry: new ol.geom.Point(ol.proj.fromLonLat([station.lon, station.lat])),
+          name: 'Ж/Д вокзал',
+          type: 'train'
+        });
+      });
+      trainSource.addFeatures(features);
+    }
+
+    // Обработчик клика для попапа
     map.on('singleclick', function(evt) {
-      const feature = map.forEachFeatureAtPixel(evt.pixel, function(feature) {
-        return feature;
+      let feature = null;
+      map.forEachFeatureAtPixel(evt.pixel, function(f) {
+        feature = f;
+        return true;
       });
 
       const popup = document.getElementById('popup');
@@ -208,13 +303,18 @@
 
       if (feature) {
         const props = feature.getProperties();
-
-        popupContent.innerHTML = `
-          <h6 style="margin-bottom: 8px;">${props.name || 'Локация'}</h6>
-          <div><b>Балл:</b> ${props.score ?? '—'}</div>
-          <div><b>Координаты:</b> ${props.lat}, ${props.lon}</div>
-        `;
-
+        const coords = props.geometry.getCoordinates();
+        if (props.type === 'metro') {
+          popupContent.innerHTML = `<h6>Станция метро</h6><div>Координаты: ${coords[1].toFixed(6)}, ${coords[0].toFixed(6)}</div>`;
+        } else if (props.type === 'train') {
+          popupContent.innerHTML = `<h6>Ж/Д вокзал</h6><div>Координаты: ${coords[1].toFixed(6)}, ${coords[0].toFixed(6)}</div>`;
+        } else {
+          popupContent.innerHTML = `
+            <h6>${props.name || 'Предлагаемая локация'}</h6>
+            <div><b>Балл:</b> ${props.score?.toFixed(4) ?? '—'}</div>
+            <div><b>Координаты:</b> ${props.lat?.toFixed(6) ?? '—'}, ${props.lon?.toFixed(6) ?? '—'}</div>
+          `;
+        }
         popup.style.display = 'block';
         popupOverlay.setPosition(evt.coordinate);
       } else {
@@ -230,33 +330,26 @@
     };
   }
 
-  function addPointsToMap(points) {
-    vectorSource.clear();
-
+  function addResultsToMap(points) {
+    resultsSource.clear();
     const features = points.map(point => {
       return new ol.Feature({
-        geometry: new ol.geom.Point(
-          ol.proj.fromLonLat([point.lon, point.lat])
-        ),
+        geometry: new ol.geom.Point(ol.proj.fromLonLat([point.lon, point.lat])),
         name: point.name,
-        description: point.description,
         score: point.score,
         lat: point.lat,
-        lon: point.lon
+        lon: point.lon,
+        type: 'proposed'
       });
     });
-
-    vectorSource.addFeatures(features);
+    resultsSource.addFeatures(features);
 
     if (features.length > 0) {
-      const extent = vectorSource.getExtent();
-      map.getView().fit(extent, {
-        padding: [40, 40, 40, 40],
-        maxZoom: 14,
-        duration: 500
-      });
+      const extent = resultsSource.getExtent();
+      if (extent && !isNaN(extent[0])) {
+        map.getView().fit(extent, { padding: [40, 40, 40, 40], maxZoom: 14, duration: 500 });
+      }
     }
-
     setTimeout(() => map.updateSize(), 200);
   }
 
@@ -274,23 +367,25 @@
     const selectedCriteria = Array.from(
       document.querySelectorAll('.form-check-input:checked')
     ).map(cb => cb.value);
-
     const amount = document.getElementById('SelectAmount').value;
 
     fetch('/submit', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        n_stations: amount,
-        criteria: selectedCriteria
-      })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ n_stations: amount, criteria: selectedCriteria })
     })
     .then(response => response.json())
     .then(data => {
       loader.style.display = 'none';
       resultsArea.style.display = 'block';
+
+      // Сообщение, если найдено меньше станций, чем запрошено
+      if (data.message) {
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'alert alert-warning';
+        msgDiv.innerHTML = `<strong>${data.message}</strong>`;
+        pointsList.parentNode.insertBefore(msgDiv, pointsList);
+      }
 
       if (data.results && data.results.length > 0) {
         data.results.forEach((point, index) => {
@@ -298,19 +393,20 @@
           item.className = 'alert alert-info';
           item.innerHTML = `
             <strong>${point.name ?? 'Без названия'}</strong><br>
-            Координаты: ${Number(point.lat).toFixed(6)}, ${Number(point.lon).toFixed(6)}<br>
-            Оценка: ${point.score ?? '—'}<br>
-            Удалённость от центра: ${point.center ?? '—'}<br>
-            Удалённость от аэропорта: ${point.airport ?? '—'}<br>
-            Ближайшая станция метро: ${point.metro ?? '—'}<br>
-            Ближайшая станция Ж/Д: ${point.train ?? '—'}
+            Координаты: ${Number(point.lat).toFixed(5)}, ${Number(point.lon).toFixed(5)}<br>
+            Оценка: ${point.score.toFixed(2) ?? '—'}<br>
+            Население в радиусе 500 метров: ${point.population.toFixed(0) ?? '—'}<br>
+            Удалённость от центра: ${point.center.toFixed(1) ?? '—'}<br>
+            Удалённость от аэропорта: ${point.airport.toFixed(1) ?? '—'}<br>
+            Ближайшая станция метро: ${point.metro.toFixed(1) ?? '—'}<br>
+            Ближайшая станция Ж/Д: ${point.train.toFixed(1) ?? '—'}
           `;
           pointsList.appendChild(item);
         });
 
         mapArea.style.display = 'block';
         initMap();
-        addPointsToMap(data.results);
+        addResultsToMap(data.results);
       } else {
         pointsList.innerHTML = '<p>Точки не найдены. Попробуйте изменить критерии.</p>';
       }
@@ -321,6 +417,9 @@
       alert('Произошла ошибка при расчете. Проверьте консоль бэкенда.');
     });
   }
+
+  // Инициализация карты при загрузке страницы (сразу показываем существующие станции)
+  initMap();
 </script>
 
 {% endblock %}

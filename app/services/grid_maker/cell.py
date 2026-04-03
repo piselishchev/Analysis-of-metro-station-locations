@@ -65,17 +65,14 @@ class Cell:
                 cls._buildings = cls._buildings.set_crs(utm_crs)
         else:
             print("!!!!!")
-            # Качаем все здания из OSM
             buildings_raw = ox.features_from_place(city_name, {"building": True})
             buildings_raw = buildings_raw.to_crs(utm_crs)
 
-            # Оставляем только геометрию и этажность
             cols = ['geometry']
             if 'building:levels' in buildings_raw.columns:
                 cols.append('building:levels')
             cls._buildings = buildings_raw[cols].copy()
 
-            # Превращаем этажность в числа (берём первое число, если нет — 3)
             if 'building:levels' in cls._buildings.columns:
                 cls._buildings['building:levels'] = (
                     cls._buildings['building:levels']
@@ -88,13 +85,10 @@ class Cell:
             else:
                 cls._buildings['building:levels'] = 3.0
 
-            # Упрощаем геометрию для скорости (точность 1 метр — глазом не видно)
             cls._buildings['geometry'] = cls._buildings['geometry'].simplify(1.0)
 
-            # Сохраняем на диск, чтобы в следующий раз не качать
             cls._buildings.to_file(cache_dir, driver="GeoJSON")
 
-        # Функция перевода из градусов в метры (UTM)
         cls._project_to_utm = pyproj.Transformer.from_crs(
             "EPSG:4326", utm_crs, always_xy=True
         ).transform
@@ -104,7 +98,7 @@ class Cell:
     @staticmethod
     def _safe_extract_floor(val):
         """Запасной метод, сейчас не используется."""
-        # оставлен на случай, если понадобится другой способ обработки этажности
+
         pass
 
     def estimate_population(self):
@@ -112,15 +106,12 @@ class Cell:
         if self.middle is None:
             return None
 
-        # Если данные ещё не загружены — загружаем
         if not type(self)._cache_loaded:
             type(self).load_buildings()
 
-        # Переводим центр в метры (UTM) — меняем порядок координат для Shapely
         point_wgs = Point(self.middle[1], self.middle[0])
         point_utm = transform(type(self)._project_to_utm, point_wgs)
 
-        # Строим квадрат вокруг центра (половина стороны = 500 м)
         half = self._size / 2
         cell_poly = box(
             point_utm.x - half,
@@ -129,7 +120,6 @@ class Cell:
             point_utm.y + half
         )
 
-        # Быстрый поиск зданий через пространственный индекс (R-tree)
         buildings = type(self)._buildings
         possible_idx = list(buildings.sindex.intersection(cell_poly.bounds))
         if not possible_idx:
@@ -137,21 +127,17 @@ class Cell:
             return 0
 
         possible = buildings.iloc[possible_idx]
-        # Отсеиваем те, которые только задели границу по bounding box, но реально не пересекаются
         possible = possible[possible.intersects(cell_poly)]
 
         if possible.empty:
             self.population = 0
             return 0
 
-        # Площади пересечений зданий с квадратом
         intersected = possible.geometry.intersection(cell_poly)
         areas = intersected.area
 
-        # Этажность (уже числа)
         floors = possible['building:levels'].values
 
-        # Эффективная жилая площадь = сумма(площадь × этажность)
         effective_area = (areas * floors).sum()
         self.population = round(effective_area * type(self)._people_per_sqm, 0)
         return self.population

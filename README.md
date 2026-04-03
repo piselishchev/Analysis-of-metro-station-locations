@@ -37,4 +37,4 @@ You can click on any marker to see details.
  
 First run will be slow because OSMnx downloads road data. After that it caches locally.
  
-The project was tested on Nizhny Novgorod, Russia. For other cities you need to adjust the JSON file and possibly the UTM zone.
+The project was tested on Nizhny Novgorod, Russia.

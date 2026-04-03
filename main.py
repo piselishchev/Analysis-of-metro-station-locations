@@ -1,6 +1,4 @@
 from app import create_app
-from app.services.grid_maker import create_grid;
-from app.utils.cities import CITIES
 from app.config import Config
 import osmnx as ox
 
